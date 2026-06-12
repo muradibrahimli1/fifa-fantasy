@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0e1a;
+  --panel: #121829;
+  --panel-2: #1a2236;
+  --border: #232c44;
+  --text: #e6ebf5;
+  --muted: #8a96b4;
+  --accent: #19e58a;
+  --accent-2: #3b82f6;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel2: var(--panel-2);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent2: var(--accent-2);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Position color chips */
+.pos-GK {
+  background: #f59e0b22;
+  color: #fbbf24;
+  border: 1px solid #f59e0b55;
+}
+.pos-DEF {
+  background: #3b82f622;
+  color: #60a5fa;
+  border: 1px solid #3b82f655;
+}
+.pos-MID {
+  background: #10b98122;
+  color: #34d399;
+  border: 1px solid #10b98155;
+}
+.pos-FWD {
+  background: #ef444422;
+  color: #f87171;
+  border: 1px solid #ef444455;
+}
