@@ -1,4 +1,5 @@
 import type { AdvisorReport, RecKind } from "./advisor";
+import type { AIDecision } from "./ai";
 
 const EMOJI: Record<RecKind, string> = {
   alert: "🚨",
@@ -49,6 +50,27 @@ function formatH(h: number): string {
   if (h >= 48) return `${Math.round(h / 24)}d`;
   if (h >= 24) return `${Math.floor(h / 24)}d ${Math.round(h % 24)}h`;
   return `${h.toFixed(0)}h`;
+}
+
+// AI Coach verdict as a Telegram MarkdownV2 block.
+export function formatAIDecision(d: AIDecision): string {
+  const lines: string[] = [];
+  lines.push("");
+  lines.push("*🤖 AI Coach*");
+  lines.push(esc(d.verdict));
+  lines.push(`©️ *Captain:* ${esc(d.captain.player)} — ${esc(d.captain.reason)}`);
+  lines.push(`Ⓥ *Vice:* ${esc(d.viceCaptain.player)}`);
+  if (d.transfers.length) {
+    lines.push(`🔁 *Transfers:*`);
+    for (const t of d.transfers)
+      lines.push(`  • ${esc(t.out)} → ${esc(t.in)} — ${esc(t.reason)}`);
+  } else {
+    lines.push(`🔁 *Transfers:* hold`);
+  }
+  if (d.chip.recommend)
+    lines.push(`🎫 *Chip:* ${esc(d.chip.chip)} — ${esc(d.chip.reason)}`);
+  lines.push(`📋 *Formation:* ${esc(d.formation)}`);
+  return lines.join("\n");
 }
 
 export interface TelegramResult {

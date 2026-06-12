@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getDataset } from "@/lib/fifa/client";
 import { analyze } from "@/lib/advisor";
-import { formatReport, sendTelegram } from "@/lib/telegram";
+import { getAIDecision } from "@/lib/ai";
+import { formatAIDecision, formatReport, sendTelegram } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,13 +29,29 @@ export async function GET(req: Request) {
   try {
     const data = await getDataset();
     const report = analyze(data, ids);
-    const text = formatReport(report);
+    let text = formatReport(report);
+
+    // If OpenAI is configured, let the AI Coach make the calls and append them.
+    let aiUsed = false;
+    let aiError: string | undefined;
+    if (process.env.OPENAI_API_KEY && ids.length > 0) {
+      const ai = await getAIDecision(data, ids);
+      if (ai.ok && ai.decision) {
+        text += "\n" + formatAIDecision(ai.decision);
+        aiUsed = true;
+      } else {
+        aiError = ai.error;
+      }
+    }
+
     const telegram = await sendTelegram(text);
 
     return NextResponse.json({
       ok: true,
       sent: telegram.ok,
       telegramError: telegram.error,
+      aiUsed,
+      aiError,
       round: report.roundId,
       squadCount: report.squadCount,
       recommendations: report.recommendations.length,
