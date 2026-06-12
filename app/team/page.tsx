@@ -8,6 +8,7 @@ import { Pitch } from "@/components/Pitch";
 import { PosBadge, Stat, money } from "@/components/ui";
 
 const STORAGE_KEY = "wc2026.myteam.v1";
+const CAPTAIN_KEY = "wc2026.myteam.captain.v1";
 
 export default function TeamPage() {
   const [players, setPlayers] = useState<Player[] | null>(null);
@@ -15,12 +16,21 @@ export default function TeamPage() {
   const [search, setSearch] = useState("");
   const [stageKey, setStageKey] = useState("group");
   const [loaded, setLoaded] = useState(false);
+  // Manually chosen captain / vice (null = let the helper auto-pick).
+  const [captainId, setCaptainId] = useState<number | null>(null);
+  const [viceId, setViceId] = useState<number | null>(null);
 
-  // Load saved squad once on mount.
+  // Load saved squad + captaincy once on mount.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setIds(JSON.parse(raw));
+      const cap = localStorage.getItem(CAPTAIN_KEY);
+      if (cap) {
+        const { captainId: c, viceId: v } = JSON.parse(cap);
+        setCaptainId(c ?? null);
+        setViceId(v ?? null);
+      }
     } catch {
       /* ignore */
     }
@@ -31,6 +41,10 @@ export default function TeamPage() {
   useEffect(() => {
     if (loaded) localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
   }, [ids, loaded]);
+  useEffect(() => {
+    if (loaded)
+      localStorage.setItem(CAPTAIN_KEY, JSON.stringify({ captainId, viceId }));
+  }, [captainId, viceId, loaded]);
 
   useEffect(() => {
     fetch("/api/dataset")
@@ -54,10 +68,22 @@ export default function TeamPage() {
   );
   const lineup = useMemo(() => pickBestXI(squad), [squad]);
 
-  const totalActual = squad.reduce((s, p) => s + p.totalPoints, 0);
+  // Effective captain/vice: your manual pick if it's still in the squad,
+  // otherwise fall back to the helper's auto-pick.
+  const captain =
+    squad.find((p) => p.id === captainId) ?? lineup.captain ?? null;
+  const vice =
+    squad.find((p) => p.id === viceId && p.id !== captain?.id) ??
+    lineup.viceCaptain ??
+    null;
+
+  // FIFA total = every player's points, with the captain's points counted
+  // twice (doubled). This mirrors how the official game scores your captain.
+  const totalActual =
+    squad.reduce((s, p) => s + p.totalPoints, 0) + (captain?.totalPoints ?? 0);
   const projectedXI =
     lineup.startingXI.reduce((s, p) => s + p.projectedPoints, 0) +
-    (lineup.captain?.projectedPoints ?? 0);
+    (captain?.projectedPoints ?? 0);
 
   const searchResults =
     search.trim().length >= 2 && players
@@ -188,20 +214,73 @@ export default function TeamPage() {
         )}
       </div>
 
+      {/* Captaincy */}
+      {squad.length > 0 && (
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4">
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="text-sm">
+              <div className="mb-1 text-xs text-[var(--muted)]">
+                Captain <span className="text-[var(--accent)]">(2× points)</span>
+              </div>
+              <select
+                value={captain?.id ?? ""}
+                onChange={(e) => setCaptainId(Number(e.target.value) || null)}
+                className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm outline-none"
+              >
+                {squad.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.nationAbbr}) · {p.totalPoints} pts
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              <div className="mb-1 text-xs text-[var(--muted)]">
+                Vice-captain
+              </div>
+              <select
+                value={vice?.id ?? ""}
+                onChange={(e) => setViceId(Number(e.target.value) || null)}
+                className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm outline-none"
+              >
+                {squad
+                  .filter((p) => p.id !== captain?.id)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.nationAbbr})
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <button
+              onClick={() => {
+                setCaptainId(null);
+                setViceId(null);
+              }}
+              className="text-xs text-[var(--muted)] underline hover:text-[var(--text)]"
+            >
+              Auto-pick
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-[var(--muted)]">
+            Set these to match the captain you chose in the official FIFA game so
+            your <b>Total points</b> doubles the right player.
+          </p>
+        </div>
+      )}
+
       {/* Pitch */}
       {squad.length > 0 ? (
         <div>
           <div className="mb-2 text-sm text-[var(--muted)]">
             Suggested XI ({lineup.formation}) · captain{" "}
-            <span className="text-[var(--accent)]">
-              {lineup.captain?.name ?? "—"}
-            </span>
+            <span className="text-[var(--accent)]">{captain?.name ?? "—"}</span>
           </div>
           <Pitch
             startingXI={lineup.startingXI}
             bench={lineup.bench}
-            captainId={lineup.captain?.id}
-            viceId={lineup.viceCaptain?.id}
+            captainId={captain?.id}
+            viceId={vice?.id}
             onRemove={remove}
           />
         </div>
